@@ -533,15 +533,11 @@ double run() {
 	}
 	print_weights(weights);
 	update_memb();
-    //memb_adequacy(false);
 	print_memb(memb);
 	double prev_adeq = 0.0;
 	double adeq = adequacy_obj(false);
 	printf("Adequacy: %.20lf\n", adeq);
     double diff = fabs(adeq - prev_adeq);
-///    double out = 1.0 / clustc;
-///    double in = 1.0 - out;
-//    st_matrix *memb_mtx;
 	for(i = 1; i <= max_iter && diff > epsilon; ++i) {
         printf("Iteration %d.\n", i);
         prev_adeq = adeq;
@@ -566,11 +562,6 @@ double run() {
                     adeq - prev_adeq);
         }
         diff = fabs(adeq - prev_adeq);
-//        memb_mtx = convert_mtx(memb, objc, clustc);
-//        update_constraint(constraints, memb_mtx, in, out);
-//        free_st_matrix(memb_mtx);
-//        free(memb_mtx);
-//        print_constraints();
 	}
     printf("Adequacy difference threshold reached (%.20lf).\n",
             diff);

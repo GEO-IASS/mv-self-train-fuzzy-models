@@ -101,6 +101,10 @@ int max(int *vec, size_t size) {
     return ret;
 }
 
+int cmpint(const void *a, const void *b) {
+    return ( *(int*)a - *(int*)b );
+}
+
 // Prints a header padded with '-' having 'str' in the center.
 // Params:
 //  str - an string to be print as header.

@@ -25,6 +25,11 @@ void constraint_init(constraint *c, size_t mlsize, size_t mnlsize);
 
 void constraint_free(constraint *c);
 
+constraint** gen_constraints(int_vec *sample, size_t classc,
+        size_t objc);
+
+void print_constraints(constraint **constraints, size_t objc);
+
 void update_constraint(constraint **c, st_matrix *memb, double in,
         double out);
 

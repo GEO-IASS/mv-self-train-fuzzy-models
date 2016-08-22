@@ -682,27 +682,6 @@ void gen_constraints() {
     }
 }
 
-void print_constraints() {
-    printf("Constraints:\n");
-    size_t e;
-    size_t obj;
-    for(obj = 0; obj < objc; ++obj) {
-        if(constraints[obj]) {
-            printf("Obj %d:\n", obj);
-            printf("ML:");
-            for(e = 0; e < constraints[obj]->ml->size; ++e) {
-                printf(" %d", constraints[obj]->ml->get[e]);
-            }
-            printf("\n");
-            printf("MNL:");
-            for(e = 0; e < constraints[obj]->mnl->size; ++e) {
-                printf(" %d", constraints[obj]->mnl->get[e]);
-            }
-            printf("\n");
-        }
-    }
-}
-
 st_matrix* medoid_dist(double *weights, size_t **medoids) {
     st_matrix *ret = malloc(sizeof(st_matrix));
     init_st_matrix(ret, objc, clustc);

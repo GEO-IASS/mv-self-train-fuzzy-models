@@ -41,6 +41,68 @@ void constraint_free(constraint *c) {
 	free(c);
 }
 
+constraint** gen_constraints(int_vec *sample, size_t classc,
+        size_t objc) {
+	constraint **constraints = calloc(objc, sizeof(constraint *));
+	size_t i;
+	size_t e;
+	size_t h;
+	size_t k;
+	size_t obj;
+	size_t obj2;
+	for(k = 0; k < classc; ++k) {
+		for(i = 0; i < sample[k].size; ++i) {
+			obj = sample[k].get[i];
+            constraints[obj] = malloc(sizeof(constraint));
+			constraint_init(constraints[obj], objc, objc);
+//			constraint_init(constraints[obj], sample[k].size,
+//							constsc - sample[k].size);
+			for(h = 0; h < classc; ++h) {
+				for(e = 0; e < sample[h].size; ++e) {
+					obj2 = sample[h].get[e];
+					if(obj != obj2) {
+						if(h == k) {
+							int_vec_push(constraints[obj]->ml, obj2);
+						} else {
+							int_vec_push(constraints[obj]->mnl, obj2);
+						}
+					}
+				}
+			}
+		}
+	}
+    for(i = 0; i < objc; ++i) {
+        if(constraints[i]) {
+            qsort(constraints[i]->ml->get, constraints[i]->ml->size,
+                    sizeof(int), cmpint);
+            qsort(constraints[i]->mnl->get, constraints[i]->mnl->size,
+                    sizeof(int), cmpint);
+        }
+    }
+    return constraints;
+}
+
+void print_constraints(constraint **constraints, size_t objc) {
+    printf("Constraints:\n");
+    size_t e;
+    size_t obj;
+    for(obj = 0; obj < objc; ++obj) {
+        if(constraints[obj]) {
+            printf("Obj %d:\n", obj);
+            printf("ML:");
+            for(e = 0; e < constraints[obj]->ml->size; ++e) {
+                printf(" %d", constraints[obj]->ml->get[e]);
+            }
+            printf("\n");
+            printf("MNL:");
+            for(e = 0; e < constraints[obj]->mnl->size; ++e) {
+                printf(" %d", constraints[obj]->mnl->get[e]);
+            }
+            printf("\n");
+        }
+    }
+}
+
 void update_constraint(constraint **c, st_matrix *memb, double in,
         double out) {
     size_t h;

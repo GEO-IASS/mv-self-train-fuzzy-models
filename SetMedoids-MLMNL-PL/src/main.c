@@ -986,6 +986,7 @@ RERUN:
 	print_memb(best_memb);
 	printf("\n");
 	print_weights(best_weights);
+
     if(train_phase) {
         print_header("Training phase ended", HEADER_SIZE);
         printf("\nUpdating constraints according to the best "

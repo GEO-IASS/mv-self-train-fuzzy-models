@@ -670,8 +670,9 @@ void gen_constraints() {
 		for(i = 0; i < sample[k].size; ++i) {
 			obj = sample[k].get[i];
             constraints[obj] = malloc(sizeof(constraint));
-			constraint_init(constraints[obj], sample[k].size,
-							constsc - sample[k].size);
+			constraint_init(constraints[obj], objc, objc);
+//			constraint_init(constraints[obj], sample[k].size,
+//							constsc - sample[k].size);
 			for(h = 0; h < classc; ++h) {
 				for(e = 0; e < sample[h].size; ++e) {
 					obj2 = sample[h].get[e];
@@ -686,6 +687,14 @@ void gen_constraints() {
 			}
 		}
 	}
+    for(i = 0; i < objc; ++i) {
+        if(constraints[i]) {
+            qsort(constraints[i]->ml->get, constraints[i]->ml->size,
+                    sizeof(int), cmpint);
+            qsort(constraints[i]->mnl->get, constraints[i]->mnl->size,
+                    sizeof(int), cmpint);
+        }
+    }
 }
 
 void print_constraints() {
@@ -947,10 +956,8 @@ RERUN:
                 avg_fsil = fsil;
                 avg_ssil = ssil;
             } else {
-                avg_partcoef =
-                    (avg_partcoef + partcoef(memb_mtx)) / 2.0;
-                avg_modpcoef =
-                    (avg_modpcoef + modpcoef(memb_mtx)) / 2.0;
+                avg_partcoef = (avg_partcoef + partcoef(memb_mtx)) / 2.0;
+                avg_modpcoef = (avg_modpcoef + modpcoef(memb_mtx)) / 2.0;
                 avg_partent = (avg_partent + partent(memb_mtx)) / 2.0;
                 avg_aid = (avg_aid +
                             avg_intra_dist(memb_mtx, dists, mfuz)) / 2.0;
@@ -973,8 +980,8 @@ RERUN:
             free(agg_dmtx);
             free_st_matrix(dists);
             free(dists);
-            printf("\n");
         }
+		printf("\n");
         if(i == 1 || cur_inst_adeq < best_inst_adeq) {
             mtxcpy_d(best_memb, memb, objc, clustc);
             mtxcpy_d(best_weights, weights, clustc, dmatrixc);

@@ -30,7 +30,7 @@ constraint** gen_constraints(int_vec *sample, size_t classc,
 
 void print_constraints(constraint **constraints, size_t objc);
 
-void update_constraint(constraint **c, st_matrix *memb, double in,
+bool update_constraint(constraint **c, st_matrix *memb, double in,
         double out);
 
 #endif /* _CONSTRAINT_H_ */

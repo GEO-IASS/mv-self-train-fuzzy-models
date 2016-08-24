@@ -715,6 +715,7 @@ int main(int argc, char **argv) {
     fscanf(cfgfile, "%d", &objc);
     if(objc <= 0) {
         printf("Error: objc <= 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     // read labels
@@ -725,6 +726,7 @@ int main(int argc, char **argv) {
         fscanf(cfgfile, "%d", &labels[i]);
         if(labels[i] < 0 || labels[i] >= classc) {
             printf("Error: invalid object class.\n");
+            fclose(cfgfile);
             return 2;
         }
     }
@@ -732,6 +734,7 @@ int main(int argc, char **argv) {
     fscanf(cfgfile, "%d", &dmatrixc);
     if(dmatrixc <= 0) {
         printf("Error: dmatrixc <= 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     char dmtx_file_name[dmatrixc][BUFF_SIZE];
@@ -744,38 +747,59 @@ int main(int argc, char **argv) {
     fscanf(cfgfile, "%d", &clustc);
     if(clustc <= 0) {
         printf("Error: clustc <= 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     fscanf(cfgfile, "%d", &medoids_card);
     if(medoids_card <= 0) {
         printf("Error: medoids_card <= 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     fscanf(cfgfile, "%d", &insts);
     if(insts <= 0) {
         printf("Error: insts <= 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     fscanf(cfgfile, "%lf", &theta);
     if(dlt(theta, 0.0)) {
         printf("Error: theta < 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     fscanf(cfgfile, "%d", &max_iter);
     fscanf(cfgfile, "%lf", &epsilon);
     if(dlt(epsilon, 0.0)) {
         printf("Error: epsilon < 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     fscanf(cfgfile, "%lf", &mfuz);
     if(!dgt(mfuz, 0.0)) {
         printf("Error: mfuz <= 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     double sample_perc;
     fscanf(cfgfile, "%lf", &sample_perc);
     if(dlt(sample_perc, 0.0)) {
         printf("Error: sample_perc < 0.\n");
+        fclose(cfgfile);
+        return 2;
+    }
+    int sf_max_iter;
+    fscanf(cfgfile, "%d", &sf_max_iter);
+    if(sf_max_iter < 0) {
+        printf("Error: sf_max_iter <= 0.\n");
+        fclose(cfgfile);
+        return 2;
+    }
+    int sf_insts;
+    fscanf(cfgfile, "%d", &sf_insts);
+    if(sf_insts <= 0) {
+        printf("Error: sf_insts <= 0.\n");
+        fclose(cfgfile);
         return 2;
     }
     fclose(cfgfile);
@@ -794,6 +818,8 @@ int main(int argc, char **argv) {
     printf("'out' value: %.15lf.\n", out);
     printf("'in' value: %.15lf.\n", in);
     printf("Sample percentage: %lf.\n", sample_perc);
+    printf("Self train maxium iter: %d.\n", sf_max_iter);
+    printf("Instances per self train: %d.\n", sf_insts);
     printf("###########################\n");
 	size_t k;
 	// Allocating memory start
@@ -868,55 +894,79 @@ int main(int argc, char **argv) {
 	gen_sample(sample_perc * objc);
 	print_sample();
 	constraints = gen_constraints(sample, classc, objc);
-    bool train_phase = true;
-RERUN:
     print_constraints(constraints, objc);
+    print_header("Training phase start", HEADER_SIZE);
+    for(j = 1; j <= sf_max_iter; ++j) {
+		cur_inst_adeq = run();
+        for(i = 1; i <= insts; ++i) {
+            if(i == 1 || cur_inst_adeq < best_inst_adeq) {
+                mtxcpy_d(best_memb, memb, objc, clustc);
+                best_inst_adeq = cur_inst_adeq;
+                best_inst = i;
+            }
+        }
+        printf("\nBest adequacy %.15lf on instance %d.\n",
+                best_inst_adeq, best_inst);
+        printf("\nUpdating constraints according to the best "
+                "instance...\n\n");
+        st_matrix *best_memb_mtx = convert_mtx(best_memb, objc,
+                                                clustc);
+        if(!update_constraint(constraints, best_memb_mtx, in, out)) {
+            free_st_matrix(best_memb_mtx);
+            free(best_memb_mtx);
+            printf("There was no change on the constraints.\n");
+            continue;
+        }
+        free_st_matrix(best_memb_mtx);
+        free(best_memb_mtx);
+    }
+    print_header("Training phase ended", HEADER_SIZE);
+    print_constraints(constraints, objc);
+    print_header("Clustering process start", HEADER_SIZE);
 	for(i = 1; i <= insts; ++i) {
 		printf("Instance %u:\n", i);
 		cur_inst_adeq = run();
-        if(!train_phase) {
-            memb_mtx = convert_mtx(memb, objc, clustc);
-            pred = defuz(memb_mtx);
-            groups = asgroups(pred, objc, classc);
-            agg_dmtx = agg_dmatrix(weights);
-            dists = medoid_dist(weights, medoids);
-            csil = crispsil(groups, agg_dmtx);
-            fsil = fuzzysil(csil, groups, memb_mtx, mfuz);
-            ssil = simplesil(pred, dists);
-            if(i == 1) {
-                avg_partcoef = partcoef(memb_mtx);
-                avg_modpcoef = modpcoef(memb_mtx);
-                avg_partent = partent(memb_mtx);
-                avg_aid = avg_intra_dist(memb_mtx, dists, mfuz);
-                avg_csil = csil;
-                avg_fsil = fsil;
-                avg_ssil = ssil;
-            } else {
-                avg_partcoef = (avg_partcoef + partcoef(memb_mtx)) / 2.0;
-                avg_modpcoef = (avg_modpcoef + modpcoef(memb_mtx)) / 2.0;
-                avg_partent = (avg_partent + partent(memb_mtx)) / 2.0;
-                avg_aid = (avg_aid +
-                            avg_intra_dist(memb_mtx, dists, mfuz)) / 2.0;
-                avg_silhouet(avg_csil, csil);
-                avg_silhouet(avg_fsil, fsil);
-                avg_silhouet(avg_ssil, ssil);
-                free_silhouet(csil);
-                free(csil);
-                free_silhouet(fsil);
-                free(fsil);
-                free_silhouet(ssil);
-                free(ssil);
-            }
-            free_st_matrix(memb_mtx);
-            free(memb_mtx);
-            free(pred);
-            free_st_matrix(groups);
-            free(groups);
-            free_st_matrix(agg_dmtx);
-            free(agg_dmtx);
-            free_st_matrix(dists);
-            free(dists);
+        memb_mtx = convert_mtx(memb, objc, clustc);
+        pred = defuz(memb_mtx);
+        groups = asgroups(pred, objc, classc);
+        agg_dmtx = agg_dmatrix(weights);
+        dists = medoid_dist(weights, medoids);
+        csil = crispsil(groups, agg_dmtx);
+        fsil = fuzzysil(csil, groups, memb_mtx, mfuz);
+        ssil = simplesil(pred, dists);
+        if(i == 1) {
+            avg_partcoef = partcoef(memb_mtx);
+            avg_modpcoef = modpcoef(memb_mtx);
+            avg_partent = partent(memb_mtx);
+            avg_aid = avg_intra_dist(memb_mtx, dists, mfuz);
+            avg_csil = csil;
+            avg_fsil = fsil;
+            avg_ssil = ssil;
+        } else {
+            avg_partcoef = (avg_partcoef + partcoef(memb_mtx)) / 2.0;
+            avg_modpcoef = (avg_modpcoef + modpcoef(memb_mtx)) / 2.0;
+            avg_partent = (avg_partent + partent(memb_mtx)) / 2.0;
+            avg_aid = (avg_aid +
+                        avg_intra_dist(memb_mtx, dists, mfuz)) / 2.0;
+            avg_silhouet(avg_csil, csil);
+            avg_silhouet(avg_fsil, fsil);
+            avg_silhouet(avg_ssil, ssil);
+            free_silhouet(csil);
+            free(csil);
+            free_silhouet(fsil);
+            free(fsil);
+            free_silhouet(ssil);
+            free(ssil);
         }
+        free_st_matrix(memb_mtx);
+        free(memb_mtx);
+        free(pred);
+        free_st_matrix(groups);
+        free(groups);
+        free_st_matrix(agg_dmtx);
+        free(agg_dmtx);
+        free_st_matrix(dists);
+        free(dists);
 		printf("\n");
         if(i == 1 || cur_inst_adeq < best_inst_adeq) {
             mtxcpy_d(best_memb, memb, objc, clustc);
@@ -937,19 +987,6 @@ RERUN:
 	print_memb(best_memb);
 	printf("\n");
 	print_weights(best_weights);
-
-    if(train_phase) {
-        print_header("Training phase ended", HEADER_SIZE);
-        printf("\nUpdating constraints according to the best "
-                "instance...\n\n");
-        train_phase = false;
-        st_matrix *best_memb_mtx = convert_mtx(best_memb, objc,
-                                                clustc);
-        update_constraint(constraints, best_memb_mtx, in, out);
-        free_st_matrix(best_memb_mtx);
-        free(best_memb_mtx);
-        goto RERUN;
-    }
 
     st_matrix *best_memb_mtx = convert_mtx(best_memb, objc, clustc);
     pred = defuz(best_memb_mtx);

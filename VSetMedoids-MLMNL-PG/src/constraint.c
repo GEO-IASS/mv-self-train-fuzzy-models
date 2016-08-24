@@ -104,13 +104,14 @@ void print_constraints(constraint **constraints, size_t objc) {
     }
 }
 
-void update_constraint(constraint **c, st_matrix *memb, double in,
+bool update_constraint(constraint **c, st_matrix *memb, double in,
         double out) {
     size_t h;
     size_t i;
     size_t k;
     double memb1;
     double memb2;
+    bool changed = false;
     for(k = 0; k < memb->ncol; ++k) {
         for(i = 0; i < memb->nrow; ++i) {
             for(h = 0; h < memb->nrow; ++h) {
@@ -149,6 +150,7 @@ void update_constraint(constraint **c, st_matrix *memb, double in,
                     int_vec_push(c[h]->ml, i);
                     qsort(c[h]->ml->get, c[h]->ml->size,
                             sizeof(int), cmpint);
+                    changed = true;
                 } else if(memb2 <= out) {
                     if(!c[i]) {
                         c[i] = malloc(sizeof(constraint));
@@ -174,8 +176,10 @@ void update_constraint(constraint **c, st_matrix *memb, double in,
                     int_vec_push(c[h]->mnl, i);
                     qsort(c[h]->mnl->get, c[h]->mnl->size,
                             sizeof(int), cmpint);
+                    changed = true;
                 }
             }
         }
     }
+    return changed;
 }
